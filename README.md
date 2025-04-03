@@ -50,6 +50,7 @@ This project automates the process of monitoring bird sounds using a Raspberry P
 | Score Prediction Model   | Predicts score based on classification       |
 | API                      | Receives JSON payloads from score model      |
 
+
 ---
 
 
