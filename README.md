@@ -6,7 +6,7 @@ This project automates the process of monitoring bird sounds using a Raspberry P
 
 ---
 
-![workflow][diagram.png]
+![workflow](diagram.png)
 
 ### Data Source (Raspberry Pi)
 - **Device:** IOT devices (Raspberry Pi + Audiomoth sensors) for audio data collection.
