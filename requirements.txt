@@ -1,0 +1,15 @@
+librosa==0.10.2.post1
+mysql-connector-python~=8.0
+numpy~=1.0
+pandas~=1.0
+sqlalchemy~=2.0.0
+timm
+tqdm
+watchdog~=5.0
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch
+torchaudio
+watchdog
+schedule
+colorlog
+xgboost

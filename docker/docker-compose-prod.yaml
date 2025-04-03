@@ -1,0 +1,15 @@
+services:
+  bio-diversity:
+    image: bio-diverstiy-service:prod
+    container_name: prod-bio-service
+    env_file:
+      - .env
+    volumes:
+      - ${AUDIO_DATA_DIR}:/app/audio-data
+      - ${PWD}/app-data:/app/app-data
+      - ${PWD}/weights/:/app/weights
+      - ${PWD}/src:/app/src
+      - ${PWD}/logs:/app/logs
+      - ${PWD}/json-output:/app/json-output
+
+    shm_size: '1g'

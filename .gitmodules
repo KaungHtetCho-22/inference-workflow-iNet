@@ -1,0 +1,3 @@
+[submodule "monsoon_biodiversity_common"]
+	path = monsoon_biodiversity_common
+	url = git@github.com:witoong623/monsoon_biodiversity_common.git

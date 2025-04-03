@@ -1,0 +1,21 @@
+services:
+  dev-bio-diversity:
+    image: bio-diversity-service:devel
+    container_name: dev-bio-diversity
+    stdin_open: true
+    tty: true
+    shm_size: '1g'
+    working_dir: ${PWD}
+    environment:
+      - PYTHONPATH=${PWD}
+      - AUDIO_DATA_DIR=/app/audio_data
+      - APP_DATA_DIR=/app/app-data
+      - AUDIO_CLASSIFIER_WEIGHTS=/app/weights/soundscape-model.pt
+    volumes:
+      - ${PWD}:${PWD}
+      - ${AUDIO_DATA_DIR}:/app/audio-data
+      - ${PWD}/app-data:/app/app-data
+      - ${PWD}/weights/:/app/weights
+    entrypoint: ["/bin/bash"]
+
+
