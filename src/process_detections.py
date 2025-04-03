@@ -22,14 +22,14 @@ from monsoon_biodiversity_common.db_model import init_database, RpiDevices, Spec
 OUTPUT_DIR = "json-output"
 MODEL_PATH = "/app/weights/xgboost-model.pkl"
 
-
-TOKEN_URL = os.getenv("TOKEN_URL", "https://monsoon-dev.fissionsoft.co.th/IdentityServer/connect/token")
-CLIENT_ID = os.getenv("CLIENT_ID", "monsoon-script")
-CLIENT_SECRET = os.getenv("CLIENT_SECRET", "secret")
-USERNAME = os.getenv("API_USERNAME", "console")
-PASSWORD = os.getenv("API_PASSWORD", "M@s00n_2024")
-API_URL = os.getenv("API_URL", "https://monsoon-dev.fissionsoft.co.th/Server/API/SendIoTDevice")
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///app-data/soundscape-model.db")
+TOKEN_URL = os.getenv("TOKEN_URL")
+CLIENT_ID = os.getenv("CLIENT_ID")
+CLIENT_SECRET = os.getenv("CLIENT_SECRET")
+USERNAME = os.getenv("API_USERNAME")
+PASSWORD = os.getenv("API_PASSWORD")
+API_URL = os.getenv("API_URL")
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///app-data/soundscape-model.db") 
+OUTPUT_DIR = ("json-output")
 
 OUTPUT_DIR = ("json-output")
 os.makedirs(OUTPUT_DIR, exist_ok=True)  
