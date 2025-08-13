@@ -23,6 +23,13 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 FROM python:3.12 AS prod
 
+ENV DEBIAN_FRONTEND=noninteractive TZ=Asia/Bangkok
+RUN apt-get update \
+ && apt-get install --no-install-recommends -y tzdata \
+ && ln -fs /usr/share/zoneinfo/$TZ /etc/localtime \
+ && dpkg-reconfigure -f noninteractive tzdata \
+ && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
 
 COPY requirements.txt .
@@ -34,7 +41,5 @@ COPY . .
 ENV PYTHONPATH=/app
 
 RUN chmod +x /app/scripts/run.sh
-
-# ENTRYPOINT []
 
 CMD ["/bin/bash", "/app/scripts/run.sh"]
