@@ -10,8 +10,6 @@ import pandas as pd
 import joblib
 import sys
 from collections import defaultdict
-from datetime import datetime
-
 from datetime import datetime, timedelta
 from sqlalchemy.orm import sessionmaker
 from monsoon_biodiversity_common.db_model import init_database, RpiDevices, SpeciesDetections, AudioFiles
@@ -28,11 +26,10 @@ CLIENT_SECRET = os.getenv("CLIENT_SECRET")
 USERNAME = os.getenv("API_USERNAME")
 PASSWORD = os.getenv("API_PASSWORD")
 API_URL = os.getenv("API_URL")
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///app-data/soundscape-model.db") 
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///app-data/soundscape-model.db")
 OUTPUT_DIR = ("json-output")
 
-OUTPUT_DIR = ("json-output")
-os.makedirs(OUTPUT_DIR, exist_ok=True)  
+os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 SELECTED_FEATURES = [
     'hour', 'Abroscopus-superciliaris', 'Acheta-domesticus', 'Alcedo-atthis', 'Alophoixus-pallidus',
@@ -52,10 +49,13 @@ SELECTED_FEATURES = [
     'Yungipicus-canicapillus']
 
 bird_species = set(s for s in SELECTED_FEATURES if s != "hour")
-insect_species = set(["Acheta-domesticus", "Conocephalus-fuscus", "Eumodicogryllus-bordigalensis", "Galangal-abeculata",
-    "Gryllus-bimaculatus", "Oecanthus-pellucens", "Phaneroptera-falcata", "Phaneroptera-nana",
-    "Platypleura-cfcatenata", "Platypleura-plumosa", "Platypleura-sp10", "Platypleura-sp12cfhirtipennis",
-    "Platypleura-sp13", "Ruspolia-nitidula"])
+insect_species = set([
+    "Acheta-domesticus", "Conocephalus-fuscus", "Eumodicogryllus-bordigalensis", "Galangal-abeculata",
+    "Gryllus-bimaculatus", "Oecanthus-pellucens", "Phaneroptera-falcata", "Phaneroptera-nana"
+])
+
+from species_mapping import SPECIES_INFO  
+
 
 # --------------------------
 # Logging Setup
@@ -119,9 +119,6 @@ def predict_scores_by_device(target_date):
     preds = model.predict(X)
     features_df['score_prediction'] = preds
 
-    # score_map = {0: 'A', 1: 'B', 2: 'C'}
-    # result = features_df.groupby("device_area")['score_prediction'].agg(lambda x: x.value_counts().idxmax()).map(score_map).to_dict()
-    
     result = features_df.groupby("device_area")['score_prediction'].agg(lambda x: x.value_counts().idxmax()).to_dict()
 
     return result
@@ -165,19 +162,15 @@ def ensure_valid_token():
 def get_detections_by_date(target_date):
     result_dict = {}
     score_map = predict_scores_by_device(target_date)
-
     target_date_obj = datetime.strptime(target_date, "%Y-%m-%d").date()
     devices = session.query(RpiDevices).join(AudioFiles).filter(AudioFiles.recording_date == target_date_obj).all()
-
     logger.info(f"Found {len(devices)} devices for {target_date_obj}")
 
     for device in devices:
         device_id = device.pi_id
         audio_files = session.query(AudioFiles).filter_by(device_id=device.id, recording_date=target_date_obj).all()
-
         logger.info(f"Processing {len(audio_files)} audio files for device {device_id}")
 
-        # Prepare species counts per hour
         species_hourly_counts = defaultdict(lambda: {
             "category": None,
             "hourly_counts": [0] * 24
@@ -188,32 +181,22 @@ def get_detections_by_date(target_date):
             for d in detections:
                 sp = d.species_class
                 if sp == "nocall":
-                    continue  # Skip nocall entirely
-
-                # try:
-                #     second = int(d.time_segment_id.split("_")[-1])
-                #     hour = int(second / 3600)
-                #     hour = max(0, min(hour, 23))  # Ensure hour is 0–23
-                # except:
-                #     hour = 0
-
-
+                    continue
                 try:
-                    file_key = af.file_key  # e.g. RPiID-0000000090d15aba_2025-04-01_15-10-33_dur=...
+                    file_key = af.file_key
                     match = re.search(r"_(\d{4}-\d{2}-\d{2})_(\d{2})-(\d{2})-(\d{2})", file_key)
                     if match:
                         date_str, h, m, s = match.groups()
                         start_seconds = int(h) * 3600 + int(m) * 60 + int(s)
                         relative_second = int(d.time_segment_id.split("_")[-1])
                         absolute_second = start_seconds + relative_second
-                        hour = max(0, min(int(absolute_second / 3600), 23))  # Clamp to 0–23
+                        hour = max(0, min(int(absolute_second / 3600), 23))
                     else:
                         logger.warning(f"[WARN] Failed to extract start time from file_key: {file_key}")
                         hour = 0
                 except Exception as e:
                     logger.warning(f"[WARN] Error parsing hour: {e}")
                     hour = 0
-
 
                 species_hourly_counts[sp]["category"] = (
                     "bird" if sp in bird_species else
@@ -222,16 +205,21 @@ def get_detections_by_date(target_date):
                 )
                 species_hourly_counts[sp]["hourly_counts"][hour] += 1
 
-        species_data = {
-            sp: [data["category"]] + [str(x) for x in data["hourly_counts"]]
-            for sp, data in species_hourly_counts.items()
-        }
+        species_data = []
+        for sp, data in species_hourly_counts.items():
+            info = SPECIES_INFO.get(sp, {"name_en": sp, "name_th": sp})
+            species_data.append({
+                "name_en": info["name_en"],
+                "name_th": info["name_th"],
+                "type": data["category"],
+                "data": [str(x) for x in data["hourly_counts"]]
+            })
 
         if species_data:
             result_dict[device_id] = [{
                 "date": target_date_obj.strftime("%Y%m%d"),
                 "coordinate": [18.8018, 98.9948],
-                "score": score_map.get(device_id, "A"),
+                "score": score_map.get(device_id, 5),
                 "species": species_data
             }]
         else:
@@ -274,8 +262,6 @@ def send_predictions(prediction_data):
             time.sleep(2 ** attempt)
     logger.error("[API] All retries failed.")
 
-
-
 # --------------------------
 # Main Entrypoint
 # --------------------------
@@ -293,13 +279,31 @@ def daily_task(target_date=None):
         logger.warning("[WARN] No detection data found.")
     logger.info("=== Daily report task complete ===\n")
 
+
+            
 if __name__ == "__main__":
-    target_date_arg = sys.argv[1] if len(sys.argv) > 1 else None
-    if target_date_arg:
-        daily_task(target_date_arg)
-    else:
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Run daily detection task.")
+    parser.add_argument("--date", type=str, help="Specify a target date (format: YYYY-MM-DD).")
+    parser.add_argument("--now", action="store_true", help="Run immediately for today's date.")
+    parser.add_argument("--schedule", action="store_true", help="Run daily at 23:59 as a scheduled task.")
+    args = parser.parse_args()
+
+    if args.date:
+        logger.info(f"[MODE] Manual run for specific date: {args.date}")
+        daily_task(args.date)
+    elif args.now:
+        today_date = datetime.now().strftime("%Y-%m-%d")
+        logger.info(f"[MODE] Immediate run for today's date: {today_date}")
+        daily_task(today_date)
+    elif args.schedule:
+        logger.info("[MODE] Scheduled run at 23:59 daily.")
         schedule.every().day.at("23:59").do(daily_task)
-        logger.info("[SCHEDULER] Waiting for 23:59 each day.")
+        logger.info("[SCHEDULER] Waiting for 23:59 each day...")
         while True:
             schedule.run_pending()
             time.sleep(60)
+    else:
+        logger.error("No mode selected. Use --now, --date, or --schedule.")
+
